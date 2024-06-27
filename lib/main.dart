@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
 void main() {
   runApp(const MyApp());
@@ -7,119 +9,226 @@ void main() {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Martynkowe Kreski',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
+        primaryColor: Colors.pink[200],
+        scaffoldBackgroundColor: Colors.pink[50],
+        textTheme: TextTheme(
+          bodyMedium: TextStyle(fontSize: 16, color: Colors.pink[900]),
+        ),
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const MyHomePage(),
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
+  const MyHomePage({super.key});
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  MyHomePageState createState() => MyHomePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class MyHomePageState extends State<MyHomePage> {
+  List<Map<String, dynamic>> _persons = [];
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
+  @override
+  void initState() {
+    super.initState();
+    _loadPersons();
+  }
+
+  Future<void> _loadPersons() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? personsJson = prefs.getString('persons');
+    if (personsJson != null) {
+      setState(() {
+        _persons = List<Map<String, dynamic>>.from(json.decode(personsJson));
+      });
+    }
+  }
+
+  Future<void> _savePersons() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String personsJson = json.encode(_persons);
+    await prefs.setString('persons', personsJson);
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
       appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
-      ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
-            ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
+        title: Text(
+          'Martynkowe Kreski',
+          style: TextStyle(color: Colors.pink[900]),
+        ),
+        backgroundColor: Colors.pink[200],
+        leading: Image.asset(
+          'assets/logokreski.png',
+          width: 40,
+          height: 40,
+          fit: BoxFit.contain,
         ),
       ),
+      body: _persons.isEmpty
+          ? const Center(
+        child: Text(
+          'Brak osób, dodaj!',
+          style: TextStyle(fontSize: 20),
+        ),
+      )
+          : ListView.builder(
+        itemCount: _persons.length,
+        itemBuilder: (context, index) {
+          return Card(
+            elevation: 3,
+            margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+            color: Colors.pink[100],
+            child: ListTile(
+              title: Text(
+                _persons[index]['name'],
+                style: TextStyle(fontSize: 18, color: Colors.pink[900])
+              ),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.remove),
+                    onPressed: () {
+                      setState(() {
+                        if (_persons[index]['counter'] > 0) {
+                          _persons[index]['counter']--;
+                          _savePersons();
+                        }
+                      });
+                    },
+                  ),
+                  Text(
+                    _persons[index]['counter'].toString(),
+                    style: TextStyle(fontSize: 18, color: Colors.pink[900]),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.add),
+                    onPressed: () {
+                      setState(() {
+                        _persons[index]['counter']++;
+                        _savePersons();
+                      });
+                    },
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete),
+                    onPressed: () {
+                      _showDeleteConfirmationDialog(index);
+                    },
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
+        onPressed: _showAddPersonDialog,
+        tooltip: 'Dodaj osobę',
+        backgroundColor: Colors.pink[300],
+        child: const Icon(Icons.person_add),
+      ),
+    );
+  }
+
+  void _showAddPersonDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        String personName = '';
+        return AlertDialog(
+          title: Text(
+            'Dodaj osobę',
+            style: TextStyle(color: Colors.pink[900]),
+          ),
+          content: TextField(
+            onChanged: (value) {
+              personName = value;
+            },
+            decoration: InputDecoration(
+              hintText: "Wpisz imię osoby",
+              hintStyle: TextStyle(color: Colors.pink[200]),
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: Text(
+                'Anuluj',
+                style: TextStyle(color: Colors.pink[900]),
+              ),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            TextButton(
+              child: Text(
+                'Dodaj',
+                style: TextStyle(color: Colors.pink[900]),
+              ),
+              onPressed: () {
+                if (personName.isNotEmpty) {
+                  setState(() {
+                    _persons.add({'name': personName, 'counter': 0});
+                    _savePersons();
+                  });
+                }
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showDeleteConfirmationDialog(int index) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(
+            'Potwierdzenie',
+            style: TextStyle(color: Colors.pink[900]),
+          ),
+          content: Text(
+            'Czy na pewno chcesz usunąć osobę?',
+            style: TextStyle(color: Colors.pink[200]),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: Text(
+                'Anuluj',
+                style: TextStyle(color: Colors.pink[900]),
+              ),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            TextButton(
+              child: Text(
+                'Usuń',
+                style: TextStyle(color: Colors.pink[900]),
+              ),
+              onPressed: () {
+                setState(() {
+                  _persons.removeAt(index);
+                  _savePersons();
+                });
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 }
